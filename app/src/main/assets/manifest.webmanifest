@@ -1,0 +1,14 @@
+{
+  "name": "نور القرآن",
+  "short_name": "نور القرآن",
+  "description": "مصحف وتلاوات وتفسير ومتابعة الختمة",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07523b",
+  "theme_color": "#07523b",
+  "icons": [
+    {"src":"web-assets/logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
