@@ -1,4 +1,4 @@
-const SHELL='noor-shell-v2';
+const SHELL='noor-shell-v3';
 const FILES=['./','./index.html','./manifest.webmanifest','./web-assets/logo-real.png','./web-assets/icon-192.png','./web-assets/icon-512.png','./web-assets/fonts/AmiriQuran-Regular.ttf','./web-assets/fonts/Amiri-Regular.ttf','./web-assets/fonts/NotoNaskhArabic.ttf','./web-assets/fonts/ScheherazadeNew-Regular.ttf','./web-assets/fonts/Lateef-Regular.ttf'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(SHELL).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('noor-shell-')&&key!==SHELL).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
