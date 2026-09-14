@@ -1,0 +1,103 @@
+name: One-time signed Noor Al-Quran release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sign-release:
+    runs-on: ubuntu-latest
+    env:
+      APK_UPLOAD_URL: 'https://oaisdmntprdenmarkeast.blob.core.windows.net/files/00000000-9e24-8210-83c2-3ddc1000992d/raw?se=2026-09-14T16%3A39%3A56Z&sp=w&sv=2026-02-06&sr=b&scid=01a0a0ad-1f60-7b01-90a2-59aa188cd2e7&skoid=9b41a688-1b44-4731-856e-b0efcf3660ed&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-14T12%3A20%3A11Z&ske=2026-09-15T12%3A20%3A11Z&sks=b&skv=2026-02-06&sig=dHryOZvZZCPV7kVaAGsVSBIbbqAcRujAN4l5OvwJ4tQ%3D'
+      KEY_UPLOAD_URL: 'https://oaisdmntprnortheu.blob.core.windows.net/files/00000000-d130-81f4-bcde-168eb11d8865/raw?se=2026-09-14T16%3A39%3A56Z&sp=w&sv=2026-02-06&sr=b&scid=01a0a0ad-1f60-7b01-90a2-59aa188cd2e7&skoid=9b41a688-1b44-4731-856e-b0efcf3660ed&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-14T12%3A20%3A11Z&ske=2026-09-15T12%3A20%3A11Z&sks=b&skv=2026-02-06&sig=AHhl%2BOOPQMeVZ5G3h9Bm4B23hqdOsTeLsqylq4lpZ84%3D'
+      README_UPLOAD_URL: 'https://oaisdmntprnortheu.blob.core.windows.net/files/00000000-2580-81f4-8973-62bdd856e487/raw?se=2026-09-14T16%3A39%3A56Z&sp=w&sv=2026-02-06&sr=b&scid=01a0a0ad-1f60-7b01-90a2-59aa188cd2e7&skoid=9b41a688-1b44-4731-856e-b0efcf3660ed&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-14T08%3A37%3A10Z&ske=2026-09-15T08%3A37%3A10Z&sks=b&skv=2026-02-06&sig=Tt%2BlA2nVDRRs2szJmLuOiMz9MIJvvtf5G/Gnc7RU3JE%3D'
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build unsigned release
+        run: gradle :app:assembleRelease --stacktrace
+      - name: Generate private production key and sign
+        shell: bash
+        run: |
+          set -euo pipefail
+          signing_password="$(openssl rand -hex 32)"
+          keytool -genkeypair -v \
+            -keystore Noor-Al-Quran-release.keystore \
+            -storetype PKCS12 \
+            -storepass "$signing_password" \
+            -keypass "$signing_password" \
+            -alias noor-alquran \
+            -keyalg RSA -keysize 4096 -validity 10000 \
+            -dname "CN=Noor Al-Quran, OU=Mobile, O=Noor Al-Quran, L=Baghdad, ST=Baghdad, C=IQ"
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" apksigner.jar
+          java -jar apksigner.jar sign \
+            --ks Noor-Al-Quran-release.keystore \
+            --ks-pass "pass:$signing_password" \
+            --ks-key-alias noor-alquran \
+            --key-pass "pass:$signing_password" \
+            --out Noor-Al-Quran-v1.2.0.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          verify_output="$(java -jar apksigner.jar verify --verbose --print-certs Noor-Al-Quran-v1.2.0.apk)"
+          printf '%s\n' "$verify_output"
+          apk_sha="$(sha256sum Noor-Al-Quran-v1.2.0.apk | cut -d' ' -f1)"
+          key_sha="$(sha256sum Noor-Al-Quran-release.keystore | cut -d' ' -f1)"
+          cert_sha="$(printf '%s\n' "$verify_output" | sed -n 's/Signer #1 certificate SHA-256 digest: //p')"
+          {
+            printf '%s\n' 'ملف توقيع نور القرآن - نسخة الإنتاج'
+            printf '%s\n\n' 'احتفظ بالمفتاح وكلمات المرور في مكان خاص. فقدانها يمنع تحديث التطبيق مستقبلاً بنفس الحزمة.'
+            printf '%s\n%s\n\n' 'KEY_ALIAS:' 'noor-alquran'
+            printf '%s\n%s\n\n' 'KEYSTORE_PASSWORD:' "$signing_password"
+            printf '%s\n%s\n\n' 'KEY_PASSWORD:' "$signing_password"
+            printf '%s\n%s\n\n' 'CERTIFICATE_SHA256:' "$cert_sha"
+            printf '%s\n%s\n\n' 'APK_SHA256:' "$apk_sha"
+            printf '%s\n%s\n\n' 'KEYSTORE_SHA256:' "$key_sha"
+            printf '%s\n' 'GitHub Actions Secrets:'
+            printf '%s\n' 'ANDROID_KEYSTORE_BASE64'
+            printf '%s\n' 'ANDROID_KEYSTORE_PASSWORD'
+            printf '%s\n' 'ANDROID_KEY_ALIAS'
+            printf '%s\n\n' 'ANDROID_KEY_PASSWORD'
+            printf '%s\n' 'ANDROID_KEYSTORE_BASE64 value:'
+            base64 -w0 Noor-Al-Quran-release.keystore
+            printf '\n'
+          } > Noor-Al-Quran-SIGNING-README.txt
+      - name: Transfer signed files privately
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --retry 3 -X PUT \
+            -H 'Content-Type: application/octet-stream' \
+            -H 'x-ms-blob-content-type: application/octet-stream' \
+            -H 'x-ms-blob-type: BlockBlob' \
+            -H 'x-ms-version: 2020-04-08' \
+            --data-binary @Noor-Al-Quran-v1.2.0.apk "$APK_UPLOAD_URL"
+          curl --fail --retry 3 -X PUT \
+            -H 'Content-Type: application/octet-stream' \
+            -H 'x-ms-blob-content-type: application/octet-stream' \
+            -H 'x-ms-blob-type: BlockBlob' \
+            -H 'x-ms-version: 2020-04-08' \
+            --data-binary @Noor-Al-Quran-release.keystore "$KEY_UPLOAD_URL"
+          curl --fail --retry 3 -X PUT \
+            -H 'Content-Type: text/plain' \
+            -H 'x-ms-blob-content-type: text/plain' \
+            -H 'x-ms-blob-type: BlockBlob' \
+            -H 'x-ms-version: 2020-04-08' \
+            --data-binary @Noor-Al-Quran-SIGNING-README.txt "$README_UPLOAD_URL"
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Noor-Al-Quran-v1.2.0-Signed
+          path: Noor-Al-Quran-v1.2.0.apk
+          if-no-files-found: error
+          retention-days: 30
