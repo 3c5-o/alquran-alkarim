@@ -1,5 +1,5 @@
-const SHELL='noor-shell-v1';
-const FILES=['./','./index.html','./manifest.webmanifest','./web-assets/logo.svg'];
+const SHELL='noor-shell-v2';
+const FILES=['./','./index.html','./manifest.webmanifest','./web-assets/logo-real.png','./web-assets/icon-192.png','./web-assets/icon-512.png','./web-assets/fonts/AmiriQuran-Regular.ttf','./web-assets/fonts/Amiri-Regular.ttf','./web-assets/fonts/NotoNaskhArabic.ttf','./web-assets/fonts/ScheherazadeNew-Regular.ttf','./web-assets/fonts/Lateef-Regular.ttf'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(SHELL).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('noor-shell-')&&key!==SHELL).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{if(event.request.method!=='GET')return;const url=new URL(event.request.url);if(url.origin!==location.origin)return;event.respondWith(caches.match(event.request).then(hit=>hit||fetch(event.request).then(response=>{const copy=response.clone();caches.open(SHELL).then(cache=>cache.put(event.request,copy));return response}).catch(()=>caches.match('./index.html'))))});
