@@ -258,7 +258,7 @@
     function reciter(){return $('#reciterSelect')?.value||'ar.alafasy'}
     function renderReciterCatalog(){
       const select=$('#reciterSelect'),box=$('#reciterCatalog');if(!select||!box)return;
-      const current=reciter();
+      const current=localStorage.getItem('noor_reciter')||reciter();
       select.innerHTML=reciterCatalog.map(r=>'<option value="'+escapeHtml(r.id)+'">'+escapeHtml(r.name)+(r.country?' · '+escapeHtml(r.country):'')+'</option>').join('');
       if([...select.options].some(o=>o.value===current))select.value=current;
       const q=normalize($('#reciterSearch')?.value||'');
